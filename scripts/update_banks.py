@@ -12,7 +12,7 @@ def main():
     # 取得專案根目錄
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    questions_dir = project_root / 'data' / 'questions'
+    questions_dir = project_root / 'docs' / 'questions'
     output_file = questions_dir / 'banks.json'
 
     # 掃描所有 .jsonl 檔案
