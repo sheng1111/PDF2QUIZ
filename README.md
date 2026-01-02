@@ -14,7 +14,7 @@ PDF2QUIZ 是一套將 PDF 題庫轉換為互動式網頁測驗應用的系統。
 
 ## 線上使用
 
-直接訪問 GitHub Pages：[https://sheng1111.github.io/PDF2QUIZ/src/](https://sheng1111.github.io/PDF2QUIZ/src/)
+直接訪問 GitHub Pages：[https://sheng1111.github.io/PDF2QUIZ/](https://sheng1111.github.io/PDF2QUIZ/)
 
 ## 專案結構
 
