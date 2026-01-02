@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景圓角矩形 -->
+  <rect width="32" height="32" rx="6" fill="url(#bg)"/>
+  <!-- 書本圖示 -->
+  <path d="M7 8c0-1 1-2 2-2h5c1 0 2 1 2 2v14c0 1-1 2-2 2H9c-1 0-2-1-2-2V8z" fill="white" opacity="0.9"/>
+  <path d="M16 8c0-1 1-2 2-2h5c1 0 2 1 2 2v14c0 1-1 2-2 2h-5c-1 0-2-1-2-2V8z" fill="white" opacity="0.7"/>
+  <!-- 問號 -->
+  <text x="16" y="18" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#2563eb" text-anchor="middle">?</text>
+</svg>

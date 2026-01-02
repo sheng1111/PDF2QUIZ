@@ -1,0 +1,63 @@
+# Python 虛擬環境
+.venv/
+venv/
+env/
+ENV/
+.Python
+
+# Python 快取
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 套件安裝
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# 編輯器與 IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Claude 設定（保留 CLAUDE.md）
+.claude/
+
+# 環境設定
+.env
+.env.local
+.env.*.local
+
+# 日誌檔案
+*.log
+logs/
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PDF 原始檔案（檔案較大，建議另外管理）
+data/pdf/
+
+# 暫存檔案
+*.tmp
+*.temp
+*.bak
+
