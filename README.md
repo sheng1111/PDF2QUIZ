@@ -20,19 +20,20 @@ PDF2QUIZ 是一套將 PDF 題庫轉換為互動式網頁測驗應用的系統。
 
 ```
 PDF2QUIZ/
-├── src/                    # 靜態網頁前端
+├── docs/                   # 靜態網頁前端（GitHub Pages 部署目錄）
 │   ├── index.html
 │   ├── style.css
-│   └── app.js
+│   ├── app.js
+│   ├── favicon.svg
+│   └── questions/          # JSONL 題庫檔案
+│       └── banks.json      # 題庫索引檔
 ├── data/
-│   ├── pdf/               # PDF 原始題庫（不納入版控）
-│   └── questions/         # 轉換後的 JSONL 題庫
-│       └── banks.json     # 題庫索引檔
-├── scripts/               # Python 處理工具
-│   ├── parse_pdf.py       # PDF 解析腳本
+│   └── pdf/                # PDF 原始題庫（不納入版控）
+├── scripts/                # Python 處理工具
+│   ├── parse_pdf.py        # PDF 解析腳本
 │   ├── fix_explanations.py # AI 解釋修正腳本
-│   └── update_banks.py    # 題庫索引更新腳本
-└── CLAUDE.md              # Claude AI 開發指引
+│   └── update_banks.py     # 題庫索引更新腳本
+└── CLAUDE.md               # Claude AI 開發指引
 ```
 
 ## 本地開發
@@ -52,25 +53,25 @@ pip install PyMuPDF
 
 ### 啟動本地伺服器
 
-
 ```bash
+cd docs
 python3 -m http.server 8000
 ```
 
-在瀏覽器開啟 http://localhost:8000/src/
+在瀏覽器開啟 http://localhost:8000/
 
 ## 使用方法
 
 ### 解析 PDF 題庫
 
 ```bash
-python3 scripts/parse_pdf.py data/pdf/YOUR_FILE.pdf -o data/questions/output.jsonl -v
+python3 scripts/parse_pdf.py data/pdf/YOUR_FILE.pdf -o docs/questions/output.jsonl -v
 ```
 
 ### 新增 AI 中文解釋（選用）
 
 ```bash
-python3 scripts/fix_explanations.py data/questions/YOUR_FILE.jsonl
+python3 scripts/fix_explanations.py docs/questions/YOUR_FILE.jsonl
 ```
 
 ### 更新題庫索引
@@ -104,13 +105,12 @@ python3 scripts/update_banks.py
 
 3. Source 選擇 `Deploy from a branch`
 
-4. Branch 選擇 `main`（或 `master`），目錄選擇 `/ (root)`
+4. Branch 選擇 `main`（或 `master`），目錄選擇 `/docs`
 
 5. 儲存後等待部署完成
 
-6. 訪問網址：`https://你的帳號.github.io/儲存庫名稱/src/`
+6. 訪問網址：`https://你的帳號.github.io/PDF2QUIZ/`
 
 ## 授權
 
 本專案僅供學習與個人使用。題庫內容版權歸原作者所有。
-
