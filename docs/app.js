@@ -277,9 +277,11 @@ function getBankPracticeStats(bankName) {
         const record = bankHistory[qId];
         if (record.practiceCount > 0) {
             practicedCount++;
-            // 最近一次答錯的題目列入錯題
+            // 最近一次答錯的題目列入錯題（保留原始類型以便比較）
             if (record.history.length > 0 && !record.history[0].isCorrect) {
-                wrongQuestionIds.push(parseInt(qId));
+                // 嘗試轉換為數字，若失敗則保留字串
+                const numId = parseInt(qId, 10);
+                wrongQuestionIds.push(isNaN(numId) ? qId : numId);
             }
         }
     });
@@ -298,21 +300,31 @@ function clearBankPracticeHistory(bankName) {
 
 // 更新練習統計 UI
 function updatePracticeStatsUI() {
+    const wrongPracticeSection = $('wrong-practice-section');
+    
     if (!state.currentBank) {
         if (els.practiceStats) els.practiceStats.classList.add('hidden');
+        if (wrongPracticeSection) wrongPracticeSection.classList.add('hidden');
         return;
     }
 
     const { practicedCount, wrongQuestionIds } = getBankPracticeStats(state.currentBank.name);
 
+    // 顯示統計資訊（只有當有練習記錄時才顯示）
+    const hasHistory = practicedCount > 0;
     if (els.practiceStats) {
-        els.practiceStats.classList.remove('hidden');
+        els.practiceStats.classList.toggle('hidden', !hasHistory);
     }
     if (els.statPracticed) {
         els.statPracticed.textContent = practicedCount;
     }
     if (els.statWrongCount) {
         els.statWrongCount.textContent = wrongQuestionIds.length;
+    }
+    
+    // 錯題練習區域（只有當有錯題時才顯示）
+    if (wrongPracticeSection) {
+        wrongPracticeSection.classList.toggle('hidden', wrongQuestionIds.length === 0);
     }
     if (els.btnPracticeWrong) {
         els.btnPracticeWrong.disabled = wrongQuestionIds.length === 0;
@@ -551,8 +563,11 @@ function startWrongQuestionsPractice() {
     state.settings.shuffleOptions = els.shuffleOptions.checked;
     state.quizMode = 'wrong';
 
-    // 從原題庫找出錯題
-    let questions = state.currentBank.questions.filter(q => wrongQuestionIds.includes(q.id));
+    // 從原題庫找出錯題（支援數字和字串類型的 ID 比較）
+    let questions = state.currentBank.questions.filter(q => {
+        // 同時檢查數字和字串形式的 ID
+        return wrongQuestionIds.includes(q.id) || wrongQuestionIds.includes(String(q.id));
+    });
 
     if (state.settings.shuffleQuestions) {
         questions = shuffle(questions);
@@ -603,9 +618,12 @@ function renderQuestion() {
 
     // 顯示題目 ID
     if (els.questionId) {
-        els.questionId.textContent = q.id ? `#${q.id}` : '';
-        els.questionId.classList.toggle('hidden', !q.id);
+        els.questionId.textContent = q.id !== undefined ? `#${q.id}` : '';
+        els.questionId.classList.toggle('hidden', q.id === undefined);
     }
+
+    // 顯示練習記錄
+    renderQuestionHistory(q);
 
     // 題型
     const isMulti = q.answer.length > 1;
@@ -761,8 +779,8 @@ function submitAnswer() {
     const q = state.questions[state.currentIndex];
     const correct = q.answer.sort().join('') === ans.sort().join('');
 
-    // 記錄練習結果
-    if (state.currentBank && q.id) {
+    // 記錄練習結果（q.id 可能為 0，需要明確檢查 undefined）
+    if (state.currentBank && q.id !== undefined && q.id !== null) {
         recordPractice(state.currentBank.name, q.id, correct, ans);
     }
 
@@ -1039,6 +1057,44 @@ function formatDate(isoString) {
     if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
     // 其他
     return date.toLocaleDateString('zh-TW');
+}
+
+// 顯示題目練習記錄
+function renderQuestionHistory(q) {
+    const historyEl = $('question-history');
+    if (!historyEl) return;
+
+    // 檢查是否有練習記錄
+    if (!state.currentBank || q.id === undefined || q.id === null) {
+        historyEl.classList.add('hidden');
+        return;
+    }
+
+    const bankHistory = state.practiceHistory[state.currentBank.name] || {};
+    const record = bankHistory[q.id];
+
+    if (!record || record.practiceCount === 0) {
+        historyEl.classList.add('hidden');
+        return;
+    }
+
+    // 計算正確率
+    const accuracy = record.practiceCount > 0 
+        ? Math.round((record.correctCount / record.practiceCount) * 100) 
+        : 0;
+
+    // 根據正確率決定顯示樣式
+    let statusClass = '';
+    if (accuracy >= 80) statusClass = 'good';
+    else if (accuracy >= 50) statusClass = 'medium';
+    else statusClass = 'poor';
+
+    historyEl.innerHTML = `
+        <span class="history-stat ${statusClass}" title="答對 ${record.correctCount} / 練習 ${record.practiceCount} 次">
+            ${record.correctCount}/${record.practiceCount}
+        </span>
+    `;
+    historyEl.classList.remove('hidden');
 }
 
 // 事件綁定

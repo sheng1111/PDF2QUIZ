@@ -52,15 +52,22 @@
                         <!-- 題庫列表動態載入 -->
                     </div>
 
-                    <div class="upload-section">
-                        <label class="upload-btn">
+                    <!-- 工具列：上傳 + 搜尋 + 格式說明 -->
+                    <div class="toolbar-section">
+                        <label class="upload-btn-compact">
                             <input type="file" id="file-input" accept=".jsonl" hidden>
                             <i data-lucide="upload"></i>
-                            <span>上傳自訂題庫 (.jsonl)</span>
+                            <span>上傳題庫</span>
                         </label>
-                        <button id="btn-show-format" class="format-help-btn">
+                        <div class="search-box-compact">
+                            <i data-lucide="search"></i>
+                            <input type="number" id="search-id-input" placeholder="題目 ID" min="1">
+                            <button id="btn-search-id" class="btn-search-compact">
+                                <i data-lucide="arrow-right"></i>
+                            </button>
+                        </div>
+                        <button id="btn-show-format" class="format-help-btn-compact" title="查看 JSONL 格式範例">
                             <i data-lucide="help-circle"></i>
-                            <span>查看 JSONL 格式範例</span>
                         </button>
                     </div>
 
@@ -109,72 +116,63 @@
                     </div>
                 </div>
 
-                <!-- 題目 ID 搜尋 -->
-                <div class="search-section">
-                    <div class="search-box">
-                        <i data-lucide="search"></i>
-                        <input type="number" id="search-id-input" placeholder="輸入題目 ID 來查看..." min="1">
-                        <button id="btn-search-id" class="btn-search">
-                            <i data-lucide="arrow-right"></i>
+                <div id="quiz-setup" class="quiz-setup hidden">
+                    <!-- 標題和練習統計合併 -->
+                    <div class="setup-header-row">
+                        <div class="setup-header">
+                            <h3 id="selected-bank-name">-</h3>
+                            <p id="selected-bank-count">共 0 題</p>
+                        </div>
+                        <div id="practice-stats" class="practice-stats-compact hidden">
+                            <div class="stat-badge">
+                                <i data-lucide="check-circle"></i>
+                                <span>已練習 <strong id="stat-practiced">0</strong></span>
+                            </div>
+                            <div class="stat-badge wrong">
+                                <i data-lucide="x-circle"></i>
+                                <span>錯題 <strong id="stat-wrong-count">0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 錯題練習按鈕 -->
+                    <div id="wrong-practice-section" class="wrong-practice-section hidden">
+                        <button id="btn-practice-wrong" class="btn-practice-wrong" disabled>
+                            <i data-lucide="repeat"></i>
+                            <span>練習錯題</span>
+                        </button>
+                        <button id="btn-clear-history" class="btn-clear-history" title="清除練習記錄">
+                            <i data-lucide="trash-2"></i>
                         </button>
                     </div>
-                </div>
 
-                <div id="quiz-setup" class="quiz-setup hidden">
-                    <div class="setup-header">
-                        <h3 id="selected-bank-name">-</h3>
-                        <p id="selected-bank-count">共 0 題</p>
-                    </div>
-
-                    <!-- 練習統計 -->
-                    <div id="practice-stats" class="practice-stats hidden">
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <i data-lucide="check-circle"></i>
-                                <span>已練習：<strong id="stat-practiced">0</strong> 題</span>
-                            </div>
-                            <div class="stat-item wrong">
-                                <i data-lucide="x-circle"></i>
-                                <span>錯題：<strong id="stat-wrong-count">0</strong> 題</span>
-                            </div>
+                    <!-- 題數選擇和選項設定合併為一行 -->
+                    <div class="quiz-options-row">
+                        <div class="mode-selector-compact">
+                            <label class="mode-chip">
+                                <input type="radio" name="mode" value="all" checked>
+                                <span>全部</span>
+                            </label>
+                            <label class="mode-chip">
+                                <input type="radio" name="mode" value="50">
+                                <span>50 題</span>
+                            </label>
+                            <label class="mode-chip has-input">
+                                <input type="radio" name="mode" value="custom">
+                                <input type="number" id="custom-count" class="custom-input-compact" min="1" max="999" value="30" disabled>
+                                <span>題</span>
+                            </label>
                         </div>
-                        <div class="stats-actions">
-                            <button id="btn-practice-wrong" class="btn-practice-wrong" disabled>
-                                <i data-lucide="repeat"></i>
-                                <span>練習錯題</span>
-                            </button>
-                            <button id="btn-clear-history" class="btn-clear-history">
-                                <i data-lucide="trash-2"></i>
-                                <span>清除記錄</span>
-                            </button>
+                        <div class="option-toggles-compact">
+                            <label class="toggle-chip" title="打亂題目順序">
+                                <input type="checkbox" id="shuffle-questions" checked>
+                                <span>亂序題目</span>
+                            </label>
+                            <label class="toggle-chip" title="打亂選項順序">
+                                <input type="checkbox" id="shuffle-options" checked>
+                                <span>亂序選項</span>
+                            </label>
                         </div>
-                    </div>
-
-                    <div class="mode-selector">
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="all" checked>
-                            <span class="mode-label">全部題目</span>
-                        </label>
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="50">
-                            <span class="mode-label">隨機 50 題</span>
-                        </label>
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="custom">
-                            <span class="mode-label">自訂數量</span>
-                            <input type="number" id="custom-count" class="custom-input" min="1" max="999" value="30" disabled>
-                        </label>
-                    </div>
-
-                    <div class="option-toggles">
-                        <label class="toggle-option">
-                            <input type="checkbox" id="shuffle-questions" checked>
-                            <span>打亂題目順序</span>
-                        </label>
-                        <label class="toggle-option">
-                            <input type="checkbox" id="shuffle-options" checked>
-                            <span>打亂選項順序</span>
-                        </label>
                     </div>
 
                     <button id="btn-start" class="btn-start">
@@ -203,6 +201,7 @@
                     <div class="question-meta">
                         <span id="question-id" class="q-id hidden"></span>
                         <span id="question-type" class="q-type"></span>
+                        <div id="question-history" class="q-history hidden"></div>
                         <button id="btn-toggle-translate" class="translate-toggle" title="切換翻譯">
                             <i data-lucide="languages"></i>
                             <span>翻譯</span>
