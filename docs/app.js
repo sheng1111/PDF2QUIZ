@@ -229,13 +229,23 @@ function savePracticeHistory() {
     }
 }
 
+// 生成題目唯一識別符（考慮同 ID 不同 topic 的情況）
+function getQuestionKey(question) {
+    if (question.topic !== undefined && question.topic !== null) {
+        return `${question.topic}_${question.id}`;
+    }
+    return String(question.id);
+}
+
 // 記錄單題練習結果
-function recordPractice(bankName, questionId, isCorrect, userAnswer) {
+function recordPractice(bankName, question, isCorrect, userAnswer) {
+    const questionKey = getQuestionKey(question);
+    
     if (!state.practiceHistory[bankName]) {
         state.practiceHistory[bankName] = {};
     }
-    if (!state.practiceHistory[bankName][questionId]) {
-        state.practiceHistory[bankName][questionId] = {
+    if (!state.practiceHistory[bankName][questionKey]) {
+        state.practiceHistory[bankName][questionKey] = {
             practiceCount: 0,
             correctCount: 0,
             wrongCount: 0,
@@ -244,7 +254,7 @@ function recordPractice(bankName, questionId, isCorrect, userAnswer) {
         };
     }
 
-    const record = state.practiceHistory[bankName][questionId];
+    const record = state.practiceHistory[bankName][questionKey];
     record.practiceCount++;
     if (isCorrect) {
         record.correctCount++;
@@ -269,24 +279,22 @@ function recordPractice(bankName, questionId, isCorrect, userAnswer) {
 // 取得題庫的練習統計
 function getBankPracticeStats(bankName) {
     const bankHistory = state.practiceHistory[bankName] || {};
-    const questionIds = Object.keys(bankHistory);
+    const questionKeys = Object.keys(bankHistory);
     let practicedCount = 0;
-    let wrongQuestionIds = [];
+    let wrongQuestionKeys = [];
 
-    questionIds.forEach(qId => {
-        const record = bankHistory[qId];
+    questionKeys.forEach(qKey => {
+        const record = bankHistory[qKey];
         if (record.practiceCount > 0) {
             practicedCount++;
-            // 最近一次答錯的題目列入錯題（保留原始類型以便比較）
+            // 最近一次答錯的題目列入錯題（使用 questionKey 格式：topic_id 或 id）
             if (record.history.length > 0 && !record.history[0].isCorrect) {
-                // 嘗試轉換為數字，若失敗則保留字串
-                const numId = parseInt(qId, 10);
-                wrongQuestionIds.push(isNaN(numId) ? qId : numId);
+                wrongQuestionKeys.push(qKey);
             }
         }
     });
 
-    return { practicedCount, wrongQuestionIds };
+    return { practicedCount, wrongQuestionKeys };
 }
 
 // 清除題庫練習記錄
@@ -308,7 +316,7 @@ function updatePracticeStatsUI() {
         return;
     }
 
-    const { practicedCount, wrongQuestionIds } = getBankPracticeStats(state.currentBank.name);
+    const { practicedCount, wrongQuestionKeys } = getBankPracticeStats(state.currentBank.name);
 
     // 顯示統計資訊（只有當有練習記錄時才顯示）
     const hasHistory = practicedCount > 0;
@@ -319,15 +327,15 @@ function updatePracticeStatsUI() {
         els.statPracticed.textContent = practicedCount;
     }
     if (els.statWrongCount) {
-        els.statWrongCount.textContent = wrongQuestionIds.length;
+        els.statWrongCount.textContent = wrongQuestionKeys.length;
     }
     
     // 錯題練習區域（只有當有錯題時才顯示）
     if (wrongPracticeSection) {
-        wrongPracticeSection.classList.toggle('hidden', wrongQuestionIds.length === 0);
+        wrongPracticeSection.classList.toggle('hidden', wrongQuestionKeys.length === 0);
     }
     if (els.btnPracticeWrong) {
-        els.btnPracticeWrong.disabled = wrongQuestionIds.length === 0;
+        els.btnPracticeWrong.disabled = wrongQuestionKeys.length === 0;
     }
 }
 
@@ -552,8 +560,8 @@ function startQuiz() {
 function startWrongQuestionsPractice() {
     if (!state.currentBank) return;
 
-    const { wrongQuestionIds } = getBankPracticeStats(state.currentBank.name);
-    if (wrongQuestionIds.length === 0) {
+    const { wrongQuestionKeys } = getBankPracticeStats(state.currentBank.name);
+    if (wrongQuestionKeys.length === 0) {
         alert('目前沒有錯題可以練習！');
         return;
     }
@@ -563,10 +571,10 @@ function startWrongQuestionsPractice() {
     state.settings.shuffleOptions = els.shuffleOptions.checked;
     state.quizMode = 'wrong';
 
-    // 從原題庫找出錯題（支援數字和字串類型的 ID 比較）
+    // 從原題庫找出錯題（使用 questionKey 比較）
     let questions = state.currentBank.questions.filter(q => {
-        // 同時檢查數字和字串形式的 ID
-        return wrongQuestionIds.includes(q.id) || wrongQuestionIds.includes(String(q.id));
+        const qKey = getQuestionKey(q);
+        return wrongQuestionKeys.includes(qKey);
     });
 
     if (state.settings.shuffleQuestions) {
@@ -781,7 +789,7 @@ function submitAnswer() {
 
     // 記錄練習結果（q.id 可能為 0，需要明確檢查 undefined）
     if (state.currentBank && q.id !== undefined && q.id !== null) {
-        recordPractice(state.currentBank.name, q.id, correct, ans);
+        recordPractice(state.currentBank.name, q, correct, ans);
     }
 
     // 標記選項
@@ -958,7 +966,7 @@ function goHome() {
     updatePracticeStatsUI();
 }
 
-// 搜尋指定題目 ID
+// 搜尋指定題目 ID（支援「topic.id」或「id」格式）
 function searchQuestionById() {
     if (!state.currentBank) {
         alert('請先選擇一個題庫！');
@@ -967,24 +975,97 @@ function searchQuestionById() {
 
     const inputValue = els.searchIdInput?.value?.trim();
     if (!inputValue) {
-        alert('請輸入題目 ID！');
+        alert('請輸入題目 ID！\n格式：直接輸入 ID 或 topic.id（如：3.15）');
         return;
     }
 
-    const targetId = parseInt(inputValue);
-    if (isNaN(targetId)) {
-        alert('請輸入有效的數字 ID！');
+    let targetTopic = null;
+    let targetId = null;
+
+    // 解析輸入格式：支援「topic.id」或「id」
+    if (inputValue.includes('.')) {
+        const parts = inputValue.split('.');
+        targetTopic = parseInt(parts[0]);
+        targetId = parseInt(parts[1]);
+        if (isNaN(targetTopic) || isNaN(targetId)) {
+            alert('格式錯誤！請輸入 topic.id（如：3.15）或直接輸入 ID');
+            return;
+        }
+    } else {
+        targetId = parseInt(inputValue);
+        if (isNaN(targetId)) {
+            alert('請輸入有效的數字 ID！');
+            return;
+        }
+    }
+
+    // 搜尋匹配的題目
+    let matches = [];
+    if (targetTopic !== null) {
+        // 指定 topic 和 id
+        matches = state.currentBank.questions.filter(
+            q => q.id === targetId && q.topic === targetTopic
+        );
+    } else {
+        // 只指定 id，找出所有匹配的
+        matches = state.currentBank.questions.filter(q => q.id === targetId);
+    }
+
+    if (matches.length === 0) {
+        const searchStr = targetTopic !== null 
+            ? `Topic ${targetTopic} 的 ID ${targetId}` 
+            : `ID ${targetId}`;
+        alert(`在「${state.currentBank.name}」中找不到 ${searchStr} 的題目！`);
         return;
     }
 
-    const question = state.currentBank.questions.find(q => q.id === targetId);
-    if (!question) {
-        alert(`在「${state.currentBank.name}」中找不到 ID 為 ${targetId} 的題目！`);
-        return;
+    if (matches.length === 1) {
+        // 只有一個匹配，直接顯示
+        showViewQuestion(matches[0]);
+    } else {
+        // 多個匹配，顯示選擇列表
+        showQuestionSelection(matches, targetId);
     }
+}
 
-    // 顯示單題查看畫面
-    showViewQuestion(question);
+// 顯示題目選擇列表（當有多個相同 ID 的題目時）
+function showQuestionSelection(questions, targetId) {
+    showScreen('view');
+
+    const container = els.viewQuestion;
+    if (!container) return;
+
+    let listHtml = questions.map((q, idx) => {
+        const topicLabel = q.topic !== undefined ? `Topic ${q.topic}` : '無 Topic';
+        const preview = q.question.length > 80 ? q.question.substring(0, 80) + '...' : q.question;
+        return `
+            <div class="selection-item" data-idx="${idx}">
+                <div class="selection-header">
+                    <span class="selection-topic">${topicLabel}</span>
+                    <span class="selection-id">#${q.id}</span>
+                </div>
+                <div class="selection-preview">${preview}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="selection-notice">
+            <i data-lucide="alert-circle"></i>
+            <span>找到 ${questions.length} 個 ID 為 ${targetId} 的題目，請選擇：</span>
+        </div>
+        <div class="selection-list">${listHtml}</div>
+    `;
+
+    // 綁定點擊事件
+    container.querySelectorAll('.selection-item').forEach(item => {
+        item.onclick = () => {
+            const idx = parseInt(item.dataset.idx);
+            showViewQuestion(questions[idx]);
+        };
+    });
+
+    initIcons();
 }
 
 // 顯示單題查看畫面
@@ -994,11 +1075,12 @@ function showViewQuestion(question) {
     const container = els.viewQuestion;
     if (!container) return;
 
-    // 取得練習記錄
+    // 取得練習記錄（使用 questionKey 來查詢）
     let practiceInfo = '';
-    if (state.currentBank && question.id) {
+    if (state.currentBank && question.id !== undefined) {
         const bankHistory = state.practiceHistory[state.currentBank.name] || {};
-        const record = bankHistory[question.id];
+        const qKey = getQuestionKey(question);
+        const record = bankHistory[qKey];
         if (record && record.practiceCount > 0) {
             practiceInfo = `
                 <div class="view-practice-info">
@@ -1071,7 +1153,8 @@ function renderQuestionHistory(q) {
     }
 
     const bankHistory = state.practiceHistory[state.currentBank.name] || {};
-    const record = bankHistory[q.id];
+    const qKey = getQuestionKey(q);
+    const record = bankHistory[qKey];
 
     if (!record || record.practiceCount === 0) {
         historyEl.classList.add('hidden');

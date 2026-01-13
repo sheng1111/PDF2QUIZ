@@ -2044,6 +2044,79 @@ body {
     margin-top: 2px;
 }
 
+/* ========== 題目選擇列表（多個相同 ID 時） ========== */
+.selection-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: rgba(217, 119, 6, 0.1);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: var(--warning);
+}
+
+.selection-notice [data-lucide] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.selection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.selection-item {
+    padding: 14px 16px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.selection-item:hover {
+    border-color: var(--primary);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.selection-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.selection-topic {
+    padding: 3px 8px;
+    background: var(--primary);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.selection-id {
+    padding: 3px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--text-secondary);
+}
+
+.selection-preview {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
 /* ========== 響應式調整 ========== */
 @media (max-width: 768px) {
     .toolbar-section {
