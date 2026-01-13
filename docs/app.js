@@ -328,7 +328,7 @@ async function loadBanks() {
 
     // 從 banks.json 讀取題庫列表
     try {
-        const resp = await fetch('../data/questions/banks.json');
+        const resp = await fetch('./data/questions/banks.json');
         if (resp.ok) {
             const banks = await resp.json();
             for (const filename of banks) {
@@ -355,7 +355,7 @@ async function loadBanks() {
 
 async function loadBank(filename) {
     try {
-        const resp = await fetch(`../data/questions/${filename}`);
+        const resp = await fetch(`./data/questions/${filename}`);
         if (resp.ok) {
             const text = await resp.text();
             const questions = parseJSONL(text);
