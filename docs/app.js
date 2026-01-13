@@ -5,6 +5,7 @@
 // LocalStorage 鍵名
 const STORAGE_KEY = 'pdf2quiz_custom_banks';
 const TRANSLATE_PREF_KEY = 'pdf2quiz_translate_enabled';
+const PRACTICE_HISTORY_KEY = 'pdf2quiz_practice_history';
 
 // 狀態管理
 const state = {
@@ -17,6 +18,8 @@ const state = {
     answered: false,        // 當前題是否已作答
     translateEnabled: false, // 翻譯開關
     translationCache: {},   // 翻譯快取
+    practiceHistory: {},    // 練習記錄
+    quizMode: 'normal',     // 測驗模式：normal（一般）/ wrong（錯題練習）
     settings: {
         shuffleQuestions: true,
         shuffleOptions: true
@@ -77,6 +80,7 @@ const els = {
     quizScreen: $('quiz-screen'),
     resultScreen: $('result-screen'),
     reviewScreen: $('review-screen'),
+    viewScreen: $('view-screen'),
     // 導航
     navHome: $('nav-home'),
     navQuiz: $('nav-quiz'),
@@ -91,6 +95,15 @@ const els = {
     shuffleQuestions: $('shuffle-questions'),
     shuffleOptions: $('shuffle-options'),
     btnStart: $('btn-start'),
+    // 題目 ID 搜尋
+    searchIdInput: $('search-id-input'),
+    btnSearchId: $('btn-search-id'),
+    // 練習記錄區
+    practiceStats: $('practice-stats'),
+    statPracticed: $('stat-practiced'),
+    statWrongCount: $('stat-wrong-count'),
+    btnPracticeWrong: $('btn-practice-wrong'),
+    btnClearHistory: $('btn-clear-history'),
     // 格式說明 Modal
     btnShowFormat: $('btn-show-format'),
     formatModal: $('format-modal'),
@@ -101,6 +114,7 @@ const els = {
     btnEndQuiz: $('btn-end-quiz'),
     questionType: $('question-type'),
     questionText: $('question-text'),
+    questionId: $('question-id'),
     optionsContainer: $('options-container'),
     feedback: $('feedback'),
     feedbackMessage: $('feedback-message'),
@@ -121,7 +135,10 @@ const els = {
     btnHome: $('btn-home'),
     // 錯題
     reviewList: $('review-list'),
-    btnBackResult: $('btn-back-result')
+    btnBackResult: $('btn-back-result'),
+    // 單題查看
+    viewQuestion: $('view-question'),
+    btnBackHome: $('btn-back-home')
 };
 
 // 工具函數
@@ -134,12 +151,13 @@ function shuffle(arr) {
     return a;
 }
 
+// 顯示指定畫面
 function showScreen(name) {
-    ['home', 'quiz', 'result', 'review'].forEach(s => {
+    ['home', 'quiz', 'result', 'review', 'view'].forEach(s => {
         const el = $(`${s}-screen`);
-        el.classList.toggle('hidden', s !== name);
+        if (el) el.classList.toggle('hidden', s !== name);
     });
-    els.navHome.classList.toggle('active', name === 'home');
+    els.navHome.classList.toggle('active', name === 'home' || name === 'view');
     els.navQuiz.classList.toggle('active', name === 'quiz');
     els.navQuiz.disabled = name !== 'quiz';
 }
@@ -186,15 +204,131 @@ function saveTranslatePreference() {
     }
 }
 
+// 讀取練習記錄
+function loadPracticeHistory() {
+    try {
+        const stored = localStorage.getItem(PRACTICE_HISTORY_KEY);
+        if (stored) {
+            state.practiceHistory = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.warn('無法讀取練習記錄:', e);
+        state.practiceHistory = {};
+    }
+}
+
+// 儲存練習記錄
+function savePracticeHistory() {
+    try {
+        localStorage.setItem(PRACTICE_HISTORY_KEY, JSON.stringify(state.practiceHistory));
+    } catch (e) {
+        console.warn('無法儲存練習記錄:', e);
+        if (e.name === 'QuotaExceededError') {
+            alert('瀏覽器儲存空間已滿，無法儲存練習記錄。');
+        }
+    }
+}
+
+// 記錄單題練習結果
+function recordPractice(bankName, questionId, isCorrect, userAnswer) {
+    if (!state.practiceHistory[bankName]) {
+        state.practiceHistory[bankName] = {};
+    }
+    if (!state.practiceHistory[bankName][questionId]) {
+        state.practiceHistory[bankName][questionId] = {
+            practiceCount: 0,
+            correctCount: 0,
+            wrongCount: 0,
+            lastPracticed: null,
+            history: []
+        };
+    }
+
+    const record = state.practiceHistory[bankName][questionId];
+    record.practiceCount++;
+    if (isCorrect) {
+        record.correctCount++;
+    } else {
+        record.wrongCount++;
+    }
+    record.lastPracticed = new Date().toISOString();
+
+    // 保留最近 10 次記錄
+    record.history.unshift({
+        timestamp: record.lastPracticed,
+        isCorrect,
+        userAnswer: userAnswer.join(',')
+    });
+    if (record.history.length > 10) {
+        record.history = record.history.slice(0, 10);
+    }
+
+    savePracticeHistory();
+}
+
+// 取得題庫的練習統計
+function getBankPracticeStats(bankName) {
+    const bankHistory = state.practiceHistory[bankName] || {};
+    const questionIds = Object.keys(bankHistory);
+    let practicedCount = 0;
+    let wrongQuestionIds = [];
+
+    questionIds.forEach(qId => {
+        const record = bankHistory[qId];
+        if (record.practiceCount > 0) {
+            practicedCount++;
+            // 最近一次答錯的題目列入錯題
+            if (record.history.length > 0 && !record.history[0].isCorrect) {
+                wrongQuestionIds.push(parseInt(qId));
+            }
+        }
+    });
+
+    return { practicedCount, wrongQuestionIds };
+}
+
+// 清除題庫練習記錄
+function clearBankPracticeHistory(bankName) {
+    if (confirm(`確定要清除「${bankName}」的所有練習記錄嗎？`)) {
+        delete state.practiceHistory[bankName];
+        savePracticeHistory();
+        updatePracticeStatsUI();
+    }
+}
+
+// 更新練習統計 UI
+function updatePracticeStatsUI() {
+    if (!state.currentBank) {
+        if (els.practiceStats) els.practiceStats.classList.add('hidden');
+        return;
+    }
+
+    const { practicedCount, wrongQuestionIds } = getBankPracticeStats(state.currentBank.name);
+
+    if (els.practiceStats) {
+        els.practiceStats.classList.remove('hidden');
+    }
+    if (els.statPracticed) {
+        els.statPracticed.textContent = practicedCount;
+    }
+    if (els.statWrongCount) {
+        els.statWrongCount.textContent = wrongQuestionIds.length;
+    }
+    if (els.btnPracticeWrong) {
+        els.btnPracticeWrong.disabled = wrongQuestionIds.length === 0;
+    }
+}
+
 // 題庫管理
 async function loadBanks() {
-    // 從 localStorage 讀取自訂題庫
+    // 從 localStorage 讀取自訂題庫和練習記錄
     loadCustomBanksFromStorage();
     loadTranslatePreference();
+    loadPracticeHistory();
 
     // 從 banks.json 讀取題庫列表
     try {
-        const resp = await fetch('./questions/banks.json');
+        const resp = await fetch('../data/questions/banks.json');
         if (resp.ok) {
             const banks = await resp.json();
             for (const filename of banks) {
@@ -221,7 +355,7 @@ async function loadBanks() {
 
 async function loadBank(filename) {
     try {
-        const resp = await fetch(`./questions/${filename}`);
+        const resp = await fetch(`../data/questions/${filename}`);
         if (resp.ok) {
             const text = await resp.text();
             const questions = parseJSONL(text);
@@ -318,6 +452,8 @@ function selectBank(idx) {
     els.currentBank.textContent = state.currentBank.name;
     // 更新自訂數量最大值
     els.customCount.max = state.currentBank.count;
+    // 更新練習統計
+    updatePracticeStatsUI();
 }
 
 function handleFileUpload(e) {
@@ -371,6 +507,7 @@ function startQuiz() {
     // 設定
     state.settings.shuffleQuestions = els.shuffleQuestions.checked;
     state.settings.shuffleOptions = els.shuffleOptions.checked;
+    state.quizMode = 'normal';
 
     // 題目數量
     const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -384,6 +521,42 @@ function startQuiz() {
         questions = shuffle(questions);
     }
     questions = questions.slice(0, count);
+
+    // 打亂選項
+    if (state.settings.shuffleOptions) {
+        questions = questions.map(q => shuffleOptions(q));
+    }
+
+    state.questions = questions;
+    state.currentIndex = 0;
+    state.userAnswers = {};
+    state.answered = false;
+
+    showScreen('quiz');
+    renderQuestion();
+}
+
+// 錯題練習模式
+function startWrongQuestionsPractice() {
+    if (!state.currentBank) return;
+
+    const { wrongQuestionIds } = getBankPracticeStats(state.currentBank.name);
+    if (wrongQuestionIds.length === 0) {
+        alert('目前沒有錯題可以練習！');
+        return;
+    }
+
+    // 設定
+    state.settings.shuffleQuestions = els.shuffleQuestions.checked;
+    state.settings.shuffleOptions = els.shuffleOptions.checked;
+    state.quizMode = 'wrong';
+
+    // 從原題庫找出錯題
+    let questions = state.currentBank.questions.filter(q => wrongQuestionIds.includes(q.id));
+
+    if (state.settings.shuffleQuestions) {
+        questions = shuffle(questions);
+    }
 
     // 打亂選項
     if (state.settings.shuffleOptions) {
@@ -427,6 +600,12 @@ function renderQuestion() {
     // 進度
     els.progressText.textContent = `${state.currentIndex + 1} / ${total}`;
     els.progressFill.style.width = `${((state.currentIndex + 1) / total) * 100}%`;
+
+    // 顯示題目 ID
+    if (els.questionId) {
+        els.questionId.textContent = q.id ? `#${q.id}` : '';
+        els.questionId.classList.toggle('hidden', !q.id);
+    }
 
     // 題型
     const isMulti = q.answer.length > 1;
@@ -582,6 +761,11 @@ function submitAnswer() {
     const q = state.questions[state.currentIndex];
     const correct = q.answer.sort().join('') === ans.sort().join('');
 
+    // 記錄練習結果
+    if (state.currentBank && q.id) {
+        recordPractice(state.currentBank.name, q.id, correct, ans);
+    }
+
     // 標記選項
     els.optionsContainer.querySelectorAll('.option').forEach(el => {
         el.classList.add('disabled');
@@ -700,6 +884,9 @@ function showResult() {
         els.scoreRing.style.strokeDashoffset = offset;
     }, 100);
 
+    // 更新練習統計
+    updatePracticeStatsUI();
+
     showScreen('result');
 }
 
@@ -749,6 +936,109 @@ function retry() {
 function goHome() {
     els.scoreRing.style.strokeDashoffset = 283;
     showScreen('home');
+    // 更新練習統計
+    updatePracticeStatsUI();
+}
+
+// 搜尋指定題目 ID
+function searchQuestionById() {
+    if (!state.currentBank) {
+        alert('請先選擇一個題庫！');
+        return;
+    }
+
+    const inputValue = els.searchIdInput?.value?.trim();
+    if (!inputValue) {
+        alert('請輸入題目 ID！');
+        return;
+    }
+
+    const targetId = parseInt(inputValue);
+    if (isNaN(targetId)) {
+        alert('請輸入有效的數字 ID！');
+        return;
+    }
+
+    const question = state.currentBank.questions.find(q => q.id === targetId);
+    if (!question) {
+        alert(`在「${state.currentBank.name}」中找不到 ID 為 ${targetId} 的題目！`);
+        return;
+    }
+
+    // 顯示單題查看畫面
+    showViewQuestion(question);
+}
+
+// 顯示單題查看畫面
+function showViewQuestion(question) {
+    showScreen('view');
+
+    const container = els.viewQuestion;
+    if (!container) return;
+
+    // 取得練習記錄
+    let practiceInfo = '';
+    if (state.currentBank && question.id) {
+        const bankHistory = state.practiceHistory[state.currentBank.name] || {};
+        const record = bankHistory[question.id];
+        if (record && record.practiceCount > 0) {
+            practiceInfo = `
+                <div class="view-practice-info">
+                    <i data-lucide="bar-chart-2"></i>
+                    <span>練習次數：${record.practiceCount}</span>
+                    <span class="correct">答對：${record.correctCount}</span>
+                    <span class="incorrect">答錯：${record.wrongCount}</span>
+                    <span class="last-time">最後練習：${formatDate(record.lastPracticed)}</span>
+                </div>
+            `;
+        }
+    }
+
+    // 建立選項 HTML
+    let optsHtml = '';
+    Object.keys(question.options).sort().forEach(l => {
+        const isCorrect = question.answer.includes(l);
+        optsHtml += `
+            <div class="view-option ${isCorrect ? 'correct' : ''}">
+                <span class="option-letter">${l}</span>
+                <span class="option-text">${question.options[l]}</span>
+                ${isCorrect ? '<span class="answer-badge">正確答案</span>' : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = `
+        <div class="view-header">
+            <span class="view-id">#${question.id || '-'}</span>
+            ${question.topic ? `<span class="view-topic">Topic ${question.topic}</span>` : ''}
+            ${question.answer.length > 1 ? '<span class="view-type">多選題</span>' : ''}
+        </div>
+        ${practiceInfo}
+        <div class="view-question-text">${question.question}</div>
+        <div class="view-options">${optsHtml}</div>
+        ${question.explanation ? `<div class="view-explanation"><i data-lucide="lightbulb"></i><span>${question.explanation}</span></div>` : ''}
+    `;
+
+    initIcons();
+}
+
+// 格式化日期
+function formatDate(isoString) {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diff = now - date;
+
+    // 小於 1 分鐘
+    if (diff < 60000) return '剛剛';
+    // 小於 1 小時
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} 分鐘前`;
+    // 小於 24 小時
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小時前`;
+    // 小於 7 天
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
+    // 其他
+    return date.toLocaleDateString('zh-TW');
 }
 
 // 事件綁定
@@ -776,6 +1066,35 @@ function initEvents() {
 
     // 翻譯切換
     els.btnToggleTranslate.addEventListener('click', toggleTranslation);
+
+    // 題目 ID 搜尋
+    if (els.btnSearchId) {
+        els.btnSearchId.addEventListener('click', searchQuestionById);
+    }
+    if (els.searchIdInput) {
+        els.searchIdInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') searchQuestionById();
+        });
+    }
+
+    // 錯題練習
+    if (els.btnPracticeWrong) {
+        els.btnPracticeWrong.addEventListener('click', startWrongQuestionsPractice);
+    }
+
+    // 清除練習記錄
+    if (els.btnClearHistory) {
+        els.btnClearHistory.addEventListener('click', () => {
+            if (state.currentBank) {
+                clearBankPracticeHistory(state.currentBank.name);
+            }
+        });
+    }
+
+    // 返回首頁（從單題查看畫面）
+    if (els.btnBackHome) {
+        els.btnBackHome.addEventListener('click', goHome);
+    }
 
     els.btnStart.addEventListener('click', startQuiz);
     els.btnEndQuiz.addEventListener('click', endQuiz);

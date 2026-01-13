@@ -109,10 +109,45 @@
                     </div>
                 </div>
 
+                <!-- 題目 ID 搜尋 -->
+                <div class="search-section">
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="number" id="search-id-input" placeholder="輸入題目 ID 來查看..." min="1">
+                        <button id="btn-search-id" class="btn-search">
+                            <i data-lucide="arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="quiz-setup" class="quiz-setup hidden">
                     <div class="setup-header">
                         <h3 id="selected-bank-name">-</h3>
                         <p id="selected-bank-count">共 0 題</p>
+                    </div>
+
+                    <!-- 練習統計 -->
+                    <div id="practice-stats" class="practice-stats hidden">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <i data-lucide="check-circle"></i>
+                                <span>已練習：<strong id="stat-practiced">0</strong> 題</span>
+                            </div>
+                            <div class="stat-item wrong">
+                                <i data-lucide="x-circle"></i>
+                                <span>錯題：<strong id="stat-wrong-count">0</strong> 題</span>
+                            </div>
+                        </div>
+                        <div class="stats-actions">
+                            <button id="btn-practice-wrong" class="btn-practice-wrong" disabled>
+                                <i data-lucide="repeat"></i>
+                                <span>練習錯題</span>
+                            </button>
+                            <button id="btn-clear-history" class="btn-clear-history">
+                                <i data-lucide="trash-2"></i>
+                                <span>清除記錄</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="mode-selector">
@@ -166,6 +201,7 @@
 
                 <div class="question-container">
                     <div class="question-meta">
+                        <span id="question-id" class="q-id hidden"></span>
                         <span id="question-type" class="q-type"></span>
                         <button id="btn-toggle-translate" class="translate-toggle" title="切換翻譯">
                             <i data-lucide="languages"></i>
@@ -268,6 +304,20 @@
                     </button>
                 </div>
                 <div id="review-list" class="review-list"></div>
+            </section>
+
+            <!-- 單題查看 -->
+            <section id="view-screen" class="screen hidden">
+                <div class="view-screen-header">
+                    <h2>題目詳情</h2>
+                    <button id="btn-back-home" class="btn-secondary">
+                        <i data-lucide="arrow-left"></i>
+                        <span>返回首頁</span>
+                    </button>
+                </div>
+                <div id="view-question" class="view-question-container">
+                    <!-- 動態載入 -->
+                </div>
             </section>
         </main>
     </div>
